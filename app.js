@@ -277,7 +277,8 @@
         ? `<img src="${f.previewURL}" alt="">`
         : `<div class="file-ico">${f.file.type === 'application/pdf' || f.name.toLowerCase().endsWith('.pdf') ? '📄' : '📎'}</div>`;
       const statusCls = f.status === 'done' ? 'ok' : f.status === 'error' ? 'err' : '';
-      const statusText = f.status === 'parsing' ? '解析中…' : f.status === 'done' ? (f.text ? `已解析 ${f.text.length} 字` : '已保存') : '解析失败，保留原文件';
+      const method = f.ocrMethod ? ` · ${f.ocrMethod}识别` : '';
+      const statusText = f.status === 'parsing' ? '解析中…' : f.status === 'done' ? (f.text ? `已解析 ${f.text.length} 字${method}` : '已保存') : '解析失败，保留原文件';
       return `<div class="file-row">
         ${ico}
         <div class="file-info">
@@ -486,6 +487,10 @@
               <label>模型名称</label>
               <input type="text" id="set-model" value="${h(s.model)}" placeholder="deepseek-chat">
             </div>
+            <div class="field" style="margin-bottom:10px">
+              <label>视觉模型（识别图片报告用，可选）</label>
+              <input type="text" id="set-vision" value="${h(s.visionModel)}" placeholder="留空用本地 OCR；填视觉模型名，如 gpt-4o / qwen-vl-plus">
+            </div>
             <div class="field" style="margin-bottom:14px">
               <label>API Key</label>
               <input type="password" id="set-apikey" value="${h(s.apiKey)}" placeholder="sk-…">
@@ -495,7 +500,8 @@
               <button class="btn ghost" onclick="App.testConnection()">测试连接</button>
             </div>
             <div class="hint-text">Key 只保存在你本地浏览器，不会上传。<br>
-            DeepSeek 已实测支持浏览器直连，手机访问时可直接使用；本地运行时也可通过 python server.py 代理转发。</div>
+            填「视觉模型」后，图片报告将用 AI 识别（更准），留空则用本地 OCR。<br>
+            DeepSeek 已实测支持浏览器直连；图片识别需要接口支持视觉能力（如 gpt-4o、qwen-vl 系列等）。</div>
           </div>
         </div>
 
@@ -581,12 +587,27 @@
   async function processFile(entry) {
     try {
       let text = '';
+      entry.ocrMethod = '';
       if (entry.file.type.startsWith('image/')) {
-        text = await Parser.ocrImage(entry.file);
+        const s = Settings.load();
+        if (s.visionModel && s.apiKey) {
+          try {
+            text = await AI.recognizeImage(entry.file);
+            entry.ocrMethod = 'AI';
+          } catch (e) {
+            text = await Parser.ocrImage(entry.file);
+            entry.ocrMethod = 'OCR';
+          }
+        } else {
+          text = await Parser.ocrImage(entry.file);
+          entry.ocrMethod = 'OCR';
+        }
       } else if (entry.file.type === 'application/pdf' || entry.name.toLowerCase().endsWith('.pdf')) {
         text = await Parser.extractPdfText(entry.file);
+        entry.ocrMethod = 'PDF';
       } else if (/text\/|\/json|\.(txt|md|csv)$/i.test(entry.name)) {
         text = await entry.file.text();
+        entry.ocrMethod = '文本';
       }
       entry.text = (text || '').replace(/\s+/g, ' ').trim();
       entry.status = 'done';
@@ -803,7 +824,8 @@
     state.settings = {
       endpoint: $('#set-endpoint').value.trim(),
       model: $('#set-model').value.trim(),
-      apiKey: $('#set-apikey').value.trim()
+      apiKey: $('#set-apikey').value.trim(),
+      visionModel: $('#set-vision').value.trim()
     };
     Settings.save(state.settings);
     toast('设置已保存');

@@ -105,5 +105,41 @@
     return chat(buildMessages(system, user));
   }
 
-  window.AI = { chat, chatWithContext, summarizeRecord };
+  /* 图片压缩为 base64 dataURL（控制请求体积） */
+  function downscaleDataURL(blob, maxDim, quality) {
+    return new Promise((resolve, reject) => {
+      const url = URL.createObjectURL(blob);
+      const img = new Image();
+      img.onload = () => {
+        let w = img.width, h = img.height;
+        const scale = Math.min(1, maxDim / Math.max(w, h));
+        w = Math.round(w * scale); h = Math.round(h * scale);
+        const c = document.createElement('canvas');
+        c.width = w; c.height = h;
+        c.getContext('2d').drawImage(img, 0, 0, w, h);
+        URL.revokeObjectURL(url);
+        resolve(c.toDataURL('image/jpeg', quality || 0.85));
+      };
+      img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('图片读取失败')); };
+      img.src = url;
+    });
+  }
+
+  /* 用配置的视觉模型识别图片报告（效果优于本地 OCR） */
+  async function recognizeImage(blob, opts = {}) {
+    const s = window.Settings.load();
+    const model = (opts.model || s.visionModel || '').trim();
+    if (!model) throw new Error('未配置视觉模型');
+    const dataUrl = await downscaleDataURL(blob, 1568, 0.85);
+    const messages = [{
+      role: 'user',
+      content: [
+        { type: 'text', text: '请识别这张医学报告/化验单图片中的全部文字内容，并尽量整理出各项检查指标（项目名、数值、单位、参考范围）。只输出你实际看到的文字和指标，不要编造。' },
+        { type: 'image_url', image_url: { url: dataUrl } }
+      ]
+    }];
+    return chat(messages, { model });
+  }
+
+  window.AI = { chat, chatWithContext, summarizeRecord, recognizeImage };
 })();
