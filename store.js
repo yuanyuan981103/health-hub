@@ -125,7 +125,7 @@
   /* ===== 设置（localStorage） ===== */
   const DEFAULT_SETTINGS = {
     endpoint: 'https://api.deepseek.com/chat/completions',
-    model: 'deepseek-chat',
+    model: 'deepseek-flash',
     apiKey: '',
     visionModel: ''
   };

@@ -485,11 +485,11 @@
             </div>
             <div class="field" style="margin-bottom:10px">
               <label>模型名称</label>
-              <input type="text" id="set-model" value="${h(s.model)}" placeholder="deepseek-chat">
+              <input type="text" id="set-model" value="${h(s.model)}" placeholder="deepseek-flash">
             </div>
             <div class="field" style="margin-bottom:10px">
               <label>视觉模型（识别图片报告用，可选）</label>
-              <input type="text" id="set-vision" value="${h(s.visionModel)}" placeholder="留空用本地 OCR；填视觉模型名，如 gpt-4o / qwen-vl-plus">
+              <input type="text" id="set-vision" value="${h(s.visionModel)}" placeholder="留空则用主模型识别（deepseek-flash 支持看图）">
             </div>
             <div class="field" style="margin-bottom:14px">
               <label>API Key</label>
@@ -500,8 +500,8 @@
               <button class="btn ghost" onclick="App.testConnection()">测试连接</button>
             </div>
             <div class="hint-text">Key 只保存在你本地浏览器，不会上传。<br>
-            填「视觉模型」后，图片报告将用 AI 识别（更准），留空则用本地 OCR。<br>
-            DeepSeek 已实测支持浏览器直连；图片识别需要接口支持视觉能力（如 gpt-4o、qwen-vl 系列等）。</div>
+            DeepSeek 的 deepseek-flash 模型已支持看图：填好 Key 后，图片报告会自动用 AI 识别（无需另配视觉模型）。<br>
+            如需更准，可在此填写其他视觉模型名覆盖。</div>
           </div>
         </div>
 
@@ -590,7 +590,7 @@
       entry.ocrMethod = '';
       if (entry.file.type.startsWith('image/')) {
         const s = Settings.load();
-        if (s.visionModel && s.apiKey) {
+        if (s.apiKey) {
           try {
             text = await AI.recognizeImage(entry.file);
             entry.ocrMethod = 'AI';

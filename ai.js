@@ -128,8 +128,8 @@
   /* 用配置的视觉模型识别图片报告（效果优于本地 OCR） */
   async function recognizeImage(blob, opts = {}) {
     const s = window.Settings.load();
-    const model = (opts.model || s.visionModel || '').trim();
-    if (!model) throw new Error('未配置视觉模型');
+    const model = (opts.model || s.visionModel || s.model || '').trim();
+    if (!model) throw new Error('未配置模型');
     const dataUrl = await downscaleDataURL(blob, 1568, 0.85);
     const messages = [{
       role: 'user',
