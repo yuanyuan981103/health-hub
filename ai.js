@@ -27,7 +27,7 @@
         body: JSON.stringify({ model, messages, stream: false })
       });
     } catch (e) {
-      throw new Error('直连接口失败，多为跨域被拦截（CORS）。静态托管下建议使用支持浏览器直连的接口（OpenRouter / SiliconFlow / Groq 等），或在电脑上运行 python server.py 使用任意接口。');
+      throw new Error('直连接口失败，可能是跨域被拦截（CORS）或网络问题。DeepSeek 已支持浏览器直连；其他接口若被拦截，可在电脑上运行 python server.py 使用。');
     }
     let data;
     try { data = await resp.json(); } catch (e) { throw new Error('接口返回异常（HTTP ' + resp.status + '）'); }

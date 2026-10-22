@@ -488,8 +488,7 @@
               <button class="btn ghost" onclick="App.testConnection()">测试连接</button>
             </div>
             <div class="hint-text">Key 只保存在你本地浏览器，不会上传。<br>
-            本地运行（python server.py）时通过代理转发，任何 OpenAI 兼容接口都可用；<br>
-            手机直接访问（GitHub Pages 静态托管）时为浏览器直连，需使用支持跨域（CORS）的接口，如 OpenRouter、SiliconFlow、Groq 等。</div>
+            DeepSeek 已实测支持浏览器直连，手机访问时可直接使用；本地运行时也可通过 python server.py 代理转发。</div>
           </div>
         </div>
 

@@ -44,8 +44,8 @@ python server.py
 API Key 只保存在你本地浏览器，不会上传。
 
 AI 有两种连接方式（自动切换）：
-- **本地运行**（`python server.py`）：通过本地代理转发，**任意** OpenAI 兼容接口都可用（DeepSeek、通义千问、Kimi 等）；
-- **GitHub Pages 直连**：浏览器直接调用接口，需接口支持跨域（CORS），推荐 OpenRouter、SiliconFlow、Groq 等。
+- **本地运行**（`python server.py`）：通过本地代理转发，任意 OpenAI 兼容接口都可用；
+- **GitHub Pages / 手机直连**：浏览器直接调用接口。DeepSeek 已实测支持跨域（CORS），可直接在手机上用。
 
 ## 文件结构
 

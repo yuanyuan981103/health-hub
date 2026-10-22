@@ -78,6 +78,6 @@ Write-Host ''
 Write-Host '部署完成后，手机浏览器打开该网址即可「添加到主屏幕」，支持离线使用。' -ForegroundColor Green
 Write-Host ''
 Write-Host '关于 AI：' -ForegroundColor Yellow
-Write-Host '  手机直连时需使用支持浏览器跨域（CORS）的接口，如 OpenRouter / SiliconFlow / Groq。' -ForegroundColor Yellow
-Write-Host '  若想用 DeepSeek / 通义等任意接口，请在电脑上运行 python server.py（走本地代理）。' -ForegroundColor Yellow
+Write-Host '  DeepSeek 已实测支持浏览器直连，手机上填 Key 即可使用。' -ForegroundColor Yellow
+Write-Host '  本地运行时也可用 python server.py 代理转发任意接口。' -ForegroundColor Yellow
 Write-Host ''
