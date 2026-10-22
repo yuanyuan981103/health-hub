@@ -20,6 +20,7 @@
     detailId: null,
     detailBusy: false,
     editingDate: false,
+    reRecognizing: false,
     // 添加页草稿
     draftDate: localDateStr(),
     draftDateTouched: false,
@@ -391,6 +392,14 @@
       </div>`;
     }
 
+    const canReRecognize = (r.attachments || []).some((a) => (a.mime && a.mime.startsWith('image/')) || /\.pdf$/i.test(a.name || ''));
+    let reRecognizeHtml = '';
+    if (canReRecognize) {
+      reRecognizeHtml = state.reRecognizing
+        ? `<div class="card"><div class="spinner"></div><div style="text-align:center;color:var(--text-2);font-size:13px">正在重新识别内容…</div></div>`
+        : `<button class="btn block ghost" style="margin-top:10px" onclick="App.reRecognize()">🔄 重新识别内容（AI）</button>`;
+    }
+
     let summaryHtml = '';
     if (r.summary) {
       summaryHtml = `<div class="card"><div class="ai-summary"><span class="tag">✨ AI 智能解读</span>${h(r.summary)}</div></div>`;
@@ -420,6 +429,7 @@
         ${indicatorsHtml}
         ${attachHtml}
         ${contentHtml}
+        ${reRecognizeHtml}
         ${summaryHtml}
         <button class="btn block danger" style="margin-top:6px" onclick="App.deleteRecord('${r.id}')">删除这条记录</button>
       </div>${tabbarHTML('archive')}`;
@@ -713,6 +723,7 @@
       recordDate: state.draftDate || localDateStr(),
       type, title,
       source: state.draftFiles.length ? 'upload' : 'manual',
+      description: state.draftText.trim(),
       content: combined,
       indicators,
       attachments,
@@ -747,6 +758,47 @@
     state.editingDate = false;
     render();
     toast('已更新记录日期');
+  }
+
+  async function reRecognize() {
+    const r = state.records.find((x) => x.id === state.detailId);
+    if (!r) return;
+    state.reRecognizing = true;
+    render();
+    try {
+      const s = Settings.load();
+      const texts = [];
+      for (const a of r.attachments || []) {
+        const f = await Store.getFile(a.id);
+        if (!f || !f.blob) continue;
+        if ((f.mime || '').startsWith('image/')) {
+          let t = '';
+          try {
+            t = s.apiKey ? await AI.recognizeImage(f.blob) : await Parser.ocrImage(f.blob);
+          } catch (e) {
+            t = await Parser.ocrImage(f.blob);
+          }
+          texts.push(t);
+        } else if (/\.pdf$/i.test(f.name || '')) {
+          texts.push(await Parser.extractPdfText(f.blob));
+        }
+      }
+      const newText = texts.map((t) => (t || '').replace(/\s+/g, ' ').trim()).filter(Boolean).join('\n');
+      if (!newText) {
+        toast('未能识别出内容');
+        return;
+      }
+      r.content = [r.description, newText].filter(Boolean).join('\n').trim();
+      r.indicators = Parser.parseIndicators(newText);
+      await Store.put(r);
+      state.records = await Store.getAll();
+      toast('已重新识别并更新指标');
+    } catch (e) {
+      toast('重新识别失败：' + (e.message || '未知错误'));
+    } finally {
+      state.reRecognizing = false;
+      render();
+    }
   }
 
   async function aiExplain() {
@@ -916,7 +968,7 @@
   window.App = {
     go, openDetail, setFilter, onSearchInput, setDraft, setVital, setDraftType,
     removeDraftFile, chooseFiles, onFilesSelected, submitRecord, deleteRecord,
-    editDate, saveRecordDate, cancelEditDate,
+    editDate, saveRecordDate, cancelEditDate, reRecognize,
     aiExplain, viewFile, suggest, sendChat, onChatInput,
     saveSettings, testConnection, exportData, importData, clearAll, recordFeeling
   };
