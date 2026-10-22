@@ -19,8 +19,10 @@
     search: '',
     detailId: null,
     detailBusy: false,
+    editingDate: false,
     // 添加页草稿
     draftDate: localDateStr(),
+    draftDateTouched: false,
     draftText: '',
     draftType: 'auto',
     draftVitals: { weight: '', sbp: '', dbp: '', hr: '', temp: '', glucose: '' },
@@ -291,7 +293,7 @@
         ${topbar('添加记录', { back: 'home', sub: '支持 PDF、图片、文字描述' })}
 
         <div class="field">
-          <label>📅 记录日期</label>
+          <label>📅 记录日期 <span style="font-weight:400;color:var(--text-3)">（改成报告上的实际检测日期）</span></label>
           <input type="date" value="${state.draftDate}" onchange="App.setDraft('draftDate', this.value)">
         </div>
 
@@ -404,9 +406,14 @@
           <span class="type-badge" style="background:${meta.color};color:#334155">${meta.icon} ${meta.label}</span>
           <h2>${h(r.title || meta.label + '记录')}</h2>
           <div class="meta-line">
-            <span>📅 ${fmtDateFull(r.recordDate)}</span>
-            <span>·</span>
-            <span>来源：${r.source === 'upload' ? '上传' : '手动'}</span>
+            ${state.editingDate
+              ? `<input type="date" id="edit-date" value="${h(r.recordDate)}" style="padding:7px 10px;border-radius:10px;border:1.5px solid var(--line);font-size:13px;background:var(--card)">
+                 <button class="btn sm" onclick="App.saveRecordDate()">保存</button>
+                 <button class="btn sm ghost" onclick="App.cancelEditDate()">取消</button>`
+              : `<span>📅 ${fmtDateFull(r.recordDate)}</span>
+                 <button class="icon-btn" style="width:26px;height:26px;font-size:13px;margin-left:2px" onclick="App.editDate()" title="修改日期">✏️</button>
+                 <span>·</span>
+                 <span>来源：${r.source === 'upload' ? '上传' : '手动'}</span>`}
           </div>
         </div>
         ${indicatorsHtml}
@@ -519,6 +526,7 @@
     state.view = view;
     if (view === 'add') {
       state.draftDate = localDateStr();
+      state.draftDateTouched = false;
       state.draftText = '';
       state.draftType = 'auto';
       state.draftVitals = { weight: '', sbp: '', dbp: '', hr: '', temp: '', glucose: '' };
@@ -536,7 +544,10 @@
 
   function setFilter(k) { state.filter = k; render(); }
   function onSearchInput(v) { state.search = v; updateArchiveList(); }
-  function setDraft(key, val) { state[key] = val; }
+  function setDraft(key, val) {
+    state[key] = val;
+    if (key === 'draftDate') state.draftDateTouched = true;
+  }
   function setVital(key, val) { state.draftVitals[key] = val; }
   function setDraftType(k) { state.draftType = k; render(); }
   function removeDraftFile(idx) {
@@ -579,6 +590,14 @@
       }
       entry.text = (text || '').replace(/\s+/g, ' ').trim();
       entry.status = 'done';
+      // 尝试从报告文本中自动识别实际检测日期
+      if (!state.draftDateTouched) {
+        const detected = Parser.detectDate(entry.text);
+        if (detected && state.draftDate === localDateStr()) {
+          state.draftDate = detected;
+          toast('已自动识别检测日期：' + detected + '，可手动修改');
+        }
+      }
     } catch (e) {
       entry.status = 'error';
     }
@@ -588,6 +607,7 @@
   function recordFeeling() {
     state.view = 'add';
     state.draftDate = localDateStr();
+    state.draftDateTouched = false;
     state.draftText = '';
     state.draftType = 'auto';
     state.draftVitals = { weight: '', sbp: '', dbp: '', hr: '', temp: '', glucose: '' };
@@ -692,6 +712,20 @@
     state.view = 'archive';
     render();
     toast('已删除');
+  }
+
+  function editDate() { state.editingDate = true; render(); }
+  function cancelEditDate() { state.editingDate = false; render(); }
+  async function saveRecordDate() {
+    const el = $('#edit-date');
+    const r = state.records.find((x) => x.id === state.detailId);
+    if (!el || !r) return;
+    r.recordDate = el.value || r.recordDate;
+    await Store.put(r);
+    state.records = await Store.getAll();
+    state.editingDate = false;
+    render();
+    toast('已更新记录日期');
   }
 
   async function aiExplain() {
@@ -860,6 +894,7 @@
   window.App = {
     go, openDetail, setFilter, onSearchInput, setDraft, setVital, setDraftType,
     removeDraftFile, chooseFiles, onFilesSelected, submitRecord, deleteRecord,
+    editDate, saveRecordDate, cancelEditDate,
     aiExplain, viewFile, suggest, sendChat, onChatInput,
     saveSettings, testConnection, exportData, importData, clearAll, recordFeeling
   };

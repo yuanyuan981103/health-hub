@@ -1,5 +1,5 @@
 /* 健康集 Service Worker —— 简单的离线缓存 */
-const CACHE = 'health-hub-v1';
+const CACHE = 'health-hub-v2';
 const ASSETS = [
   './',
   './index.html',
@@ -31,7 +31,16 @@ self.addEventListener('activate', (e) => {
 
 self.addEventListener('fetch', (e) => {
   if (e.request.method !== 'GET') return;
+  const url = new URL(e.request.url);
+  if (url.origin !== self.location.origin) return; // 不拦截外部请求（如 AI 接口）
+  // 网络优先：有网时始终拿最新版本；断网时回退到缓存
   e.respondWith(
-    caches.match(e.request).then((hit) => hit || fetch(e.request).catch(() => caches.match('./index.html')))
+    fetch(e.request)
+      .then((resp) => {
+        const copy = resp.clone();
+        caches.open(CACHE).then((c) => c.put(e.request, copy));
+        return resp;
+      })
+      .catch(() => caches.match(e.request).then((hit) => hit || caches.match('./index.html')))
   );
 });

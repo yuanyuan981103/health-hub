@@ -129,5 +129,24 @@
     return best;
   }
 
-  window.Parser = { ocrImage, extractPdfText, parseIndicators, detectType, METRICS };
+  /* 从文本中识别检查/体检的实际日期（优先带标签的日期，兜底取第一个合法日期） */
+  function detectDate(text) {
+    if (!text) return null;
+    const t = text.replace(/\s+/g, ' ');
+    const dateRe = /(\d{4})\s*[年/\-.]\s*(\d{1,2})\s*[月/\-.]\s*(\d{1,2})/g;
+    const labels = /(检查|体检|采样|检测|就诊|检验|签发|出报告|报告)/;
+    let fallback = null;
+    let m;
+    while ((m = dateRe.exec(t)) !== null) {
+      const y = parseInt(m[1], 10), mo = parseInt(m[2], 10), d = parseInt(m[3], 10);
+      if (y < 1990 || y > 2100 || mo < 1 || mo > 12 || d < 1 || d > 31) continue;
+      const val = `${y}-${String(mo).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+      const prefix = t.slice(Math.max(0, m.index - 12), m.index);
+      if (labels.test(prefix)) return val; // 明确标签，直接采用
+      if (!fallback) fallback = val;       // 第一个合法日期作为兜底
+    }
+    return fallback;
+  }
+
+  window.Parser = { ocrImage, extractPdfText, parseIndicators, detectType, detectDate, METRICS };
 })();
